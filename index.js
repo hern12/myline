@@ -3,6 +3,9 @@
 const line = require('@line/bot-sdk');
 const express = require('express');
 const config = require('./config.json');
+const Crawler = require('crawler');
+
+const crawler = new Crawler();
 
 // create LINE SDK client
 const client = new line.Client(config);
@@ -31,15 +34,99 @@ app.post('/webhook', line.middleware(config), (req, res) => {
       res.status(500).end();
     });
 });
+const temp = {'type': 'flex',
+'altText': 'this is a flex message',
+'contents': {
+  'type': 'bubble',
+  'header': {
+    'type': 'box',
+    'layout': 'vertical',
+    'contents': [
+      {
+        'type': 'text',
+        'text': 'รายการหนัง Major',
+      },
+    ],
+  },
+  'body': {
+    'type': 'box',
+    'layout': 'vertical',
+    'contents': [
+      {
+        'type': 'box',
+        'layout': 'horizontal',
+        'contents': [
+          {
+            'type': 'box',
+            'layout': 'horizontal',
+            'contents': [
+              {
+                'type': 'image',
+                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
+              },
+              {
+                'type': 'image',
+                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
+              },
+              {
+                'type': 'image',
+                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        'type': 'box',
+        'layout': 'horizontal',
+        'contents': [
+          {
+            'type': 'box',
+            'layout': 'horizontal',
+            'contents': [
+              {
+                'type': 'image',
+                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
+              },
+              {
+                'type': 'image',
+                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
+              },
+              {
+                'type': 'image',
+                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    'spacing': 'none',
+    'margin': 'none',
+  },
+  'styles': {
+    'header': {
+      'backgroundColor': '#ffeaa7',
+    },
+  },
+},}
+
+const replyListCinema = (token) => {
+  crawler.queue([{
+    uri: ''
+  }]
+})
+
+
 
 // simple reply function
 const replyText = (token, texts) => {
+  console.log(texts)
   texts = Array.isArray(texts) ? texts : [texts];
   return client.replyMessage(
     token,
-    texts.map((text) => ({ type: 'text', text }))
-  );
-};
+    texts.map((text) => ({ 'type': 'text', text })));
+}
 
 // callback function to handle a single event
 function handleEvent(event) {
@@ -89,7 +176,13 @@ function handleEvent(event) {
 }
 
 function handleText(message, replyToken) {
-  return replyText(replyToken, message.text);
+  switch(message.text){
+    case 'หนัง':
+    return replyListCinema(replyToken)
+    default :
+    return replyText(replyToken, message.text);
+  }
+  
 }
 
 function handleImage(message, replyToken) {
