@@ -4,6 +4,9 @@ const line = require('@line/bot-sdk');
 const express = require('express');
 const config = require('./config.json');
 const Crawler = require('crawler');
+const _ = require('lodash');
+const moment = require('moment')
+
 
 const crawler = new Crawler();
 
@@ -14,6 +17,7 @@ const app = express();
 
 // webhook callback
 app.post('/webhook', line.middleware(config), (req, res) => {
+  try{
   // req.body.events should be an array of events
   if (!Array.isArray(req.body.events)) {
     return res.status(500).end();
@@ -33,100 +37,66 @@ app.post('/webhook', line.middleware(config), (req, res) => {
       console.error(err);
       res.status(500).end();
     });
+  }catch(err){
+    console.log('err is', err)
+  }
 });
-const temp = {'type': 'flex',
-'altText': 'this is a flex message',
-'contents': {
-  'type': 'bubble',
-  'header': {
-    'type': 'box',
-    'layout': 'vertical',
-    'contents': [
-      {
-        'type': 'text',
-        'text': 'รายการหนัง Major',
-      },
-    ],
-  },
-  'body': {
-    'type': 'box',
-    'layout': 'vertical',
-    'contents': [
-      {
-        'type': 'box',
-        'layout': 'horizontal',
-        'contents': [
-          {
-            'type': 'box',
-            'layout': 'horizontal',
-            'contents': [
-              {
-                'type': 'image',
-                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
-              },
-              {
-                'type': 'image',
-                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
-              },
-              {
-                'type': 'image',
-                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
-              },
-            ],
-          },
-        ],
-      },
-      {
-        'type': 'box',
-        'layout': 'horizontal',
-        'contents': [
-          {
-            'type': 'box',
-            'layout': 'horizontal',
-            'contents': [
-              {
-                'type': 'image',
-                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
-              },
-              {
-                'type': 'image',
-                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
-              },
-              {
-                'type': 'image',
-                'url': 'https://www.majorcineplex.com/uploads/movie/2185/thumb_2185-large.jpg',
-              },
-            ],
-          },
-        ],
-      },
-    ],
-    'spacing': 'none',
-    'margin': 'none',
-  },
-  'styles': {
-    'header': {
-      'backgroundColor': '#ffeaa7',
-    },
-  },
-},}
 
 const replyListCinema = (token) => {
   crawler.queue([{
-    uri: ''
-  }]
-})
+    uri: 'http://www.majorcineplex.com/movie',
+    callback: function (error, res, done) {
+      if(error){
+          console.log(error);
+      }else{
+        try{
+        let $ = res.$;
+        let movieListObj = []
+        $("#tabs-1 .interfacemovie").each((index, item) => {
+          let getBuyLink = $(item).find('.blog-btnbuynow').attr('onclick').split('"')[1]
+          let getDate = $(item).find('.releaseDate').text().trim().split(":")[1]
+          let obj = {
+            imgUrl: replaceHttps($(item).find('img').attr('src')),
+            nameEn: $(item).find('.nameMovieEn').text().trim(),
+            nameTh: $(item).find('.nameMovieTh').text().trim(),
+            releaseDate: moment(getDate, 'DD/MM/YYYY').format('DD/MM/YYYY'),
+            buyLinkButton: replaceHttps(getBuyLink)
+          }
+          movieListObj.push(obj)
+        })
+        let sortingByDateDesc = _.orderBy(movieListObj, function(o) { return new moment(o.releaseDate); }, ['desc']);
+        sortingByDateDesc.pop()
+        console.log(sortingByDateDesc)
+        let getBubble = createBubble(sortingByDateDesc)
+        return client.replyMessage(
+          token,
+          getBubble
+        )
+        }catch(err){
+          console.log('errrr is', err)
+        }
+      }
+      done();
+    }
+  }])
+}
 
 
 
 // simple reply function
 const replyText = (token, texts) => {
-  console.log(texts)
   texts = Array.isArray(texts) ? texts : [texts];
   return client.replyMessage(
     token,
-    texts.map((text) => ({ 'type': 'text', text })));
+    texts.map((text) => (
+      [
+        { 'type': 'text', text },
+      ]
+      ))
+  );
 }
+
+
 
 // callback function to handle a single event
 function handleEvent(event) {
@@ -204,6 +174,95 @@ function handleLocation(message, replyToken) {
 function handleSticker(message, replyToken) {
   return replyText(replyToken, 'Got Sticker');
 }
+
+
+
+function createBubble(movieList){
+  let arrObj = []
+  for(let item of movieList){
+    let obj = {
+      'type': 'box',
+      'layout': 'vertical',
+      'contents': [
+        {
+          'type': 'image',
+          'url': item.imgUrl,
+          "size": "full",
+        },
+        {
+          'type': 'box',
+          'layout': 'vertical',
+          'contents': [
+            {
+              'type': 'text',
+              'text': 'เรื่อง: '+item.nameEn
+            },
+            {
+              'type': 'text',
+              'text':'วันที่เข้าฉาย: '+ item.releaseDate,
+              'wrap': true
+            },
+            {
+              "type": "button",
+              "style": "primary",
+              "height": "sm",
+              "action": {
+               "type": "uri",
+               "label": "Buy Ticket",
+               "uri": item.buyLinkButton
+              }
+            }
+          ]
+        },
+      ],
+    }
+    arrObj.push(obj)
+  }
+  
+
+  return {
+      'type': 'flex',
+      'altText': 'รายการหนังของ Major',
+      'margin': 'none',
+      'contents': {
+        'type': 'bubble',
+        'header': {
+          'type': 'box',
+          'layout': 'vertical',
+          'contents': [
+            {
+              'type': 'text',
+              'text': 'รายการหนัง Major',
+              "size": "md",
+              "align": "center",
+              "color": "#ffffff"
+            },
+          ],
+        },
+        'body': {
+          'type': 'box',
+          'layout': 'vertical',
+          'spacing': 'md',
+          'contents': arrObj,
+        },
+        'styles': {
+          'header': {
+            'backgroundColor': '#3742fa',
+          },
+        },
+    }
+  }
+}
+
+
+
+
+//###### UTILITY FUNCTION #######//
+function replaceHttps(data){
+  return data ? data.replace(/^http:\/\//i, 'https://') : '' 
+}
+
+//###### UTILITY FUNCTION #######//
 
 const port = config.port;
 app.listen(port, () => {
