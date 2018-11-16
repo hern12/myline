@@ -60,18 +60,20 @@ const replyListCinema = (token) => {
             nameEn: $(item).find('.nameMovieEn').text().trim(),
             nameTh: $(item).find('.nameMovieTh').text().trim(),
             releaseDate: moment(getDate, 'DD/MM/YYYY').format('DD/MM/YYYY'),
-            buyLinkButton: replaceHttps(getBuyLink)
+            buyLinkButton: 'https://www.majorcineplex.com/movie'//replaceHttps(getBuyLink)
           }
           movieListObj.push(obj)
         })
-        let sortingByDateDesc = _.orderBy(movieListObj, function(o) { return new moment(o.releaseDate); }, ['desc']);
+        let sortingByDateDesc = _.orderBy(movieListObj, function(o) { return new Date(o.releaseDate); }, ['desc']);
         sortingByDateDesc.pop()
-        console.log(sortingByDateDesc)
         let getBubble = createBubble(sortingByDateDesc)
+        let getCarousel = createCarousel(sortingByDateDesc)
         return client.replyMessage(
           token,
-          getBubble
-        )
+          getCarousel
+        ).catch((err) => {
+          console.log('this is error ', Object.keys(err.originalError), err.originalError.response.data)
+        })
         }catch(err){
           console.log('errrr is', err)
         }
@@ -175,6 +177,69 @@ function handleSticker(message, replyToken) {
   return replyText(replyToken, 'Got Sticker');
 }
 
+//## Generator ##//
+
+function createCarousel(movieList){
+  let arrObj = []
+  for(let [index, item] of movieList.entries()){
+    console.log(index, item)
+    let obj = {
+      "type": "bubble",
+      "header": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": item.nameEn
+          }
+        ]
+      },
+      "hero": {
+        "type": "image",
+        "url": item.imgUrl,
+        "size": "full",
+        "aspectMode": "cover"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": 'วันที่เข้าฉาย'+ item.releaseDate
+          },
+        ]
+      },
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "button",
+            "style": "secondary",
+            "action": {
+              "type": "uri",
+              "label": "Buy Ticket",
+              "uri": item.buyLinkButton
+            }
+          }
+        ]
+      }
+    }
+    arrObj.push(obj)
+    if(index === 9) {
+      return {
+        "type": "flex",
+        "altText": "This is a Flex message",
+        "contents": {
+          "type": "carousel",
+          "contents": arrObj
+        }
+      }
+    }
+  }
+}
 
 
 function createBubble(movieList){
@@ -202,23 +267,22 @@ function createBubble(movieList){
               'text':'วันที่เข้าฉาย: '+ item.releaseDate,
               'wrap': true
             },
-            {
-              "type": "button",
-              "style": "primary",
-              "height": "sm",
-              "action": {
-               "type": "uri",
-               "label": "Buy Ticket",
-               "uri": item.buyLinkButton
-              }
-            }
+            // {
+            //   "type": "button",
+            //   "style": "primary",
+            //   "height": "sm",
+            //   "action": {
+            //    "type": "uri",
+            //    "label": "Buy Ticket",
+            //    "uri": item.buyLinkButton
+            //   }
+            // }
           ]
         },
       ],
     }
     arrObj.push(obj)
   }
-  
 
   return {
       'type': 'flex',
@@ -253,6 +317,9 @@ function createBubble(movieList){
     }
   }
 }
+//## Generator ##//
+
+
 
 
 
